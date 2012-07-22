@@ -9,5 +9,6 @@
 
   :dev-dependencies [[storm "0.8.0-SNAPSHOT"]
                      [storm/trident "0.0.2-SNAPSHOT"]
+                     [org.clojure/clojure "1.4.0"]
                      ])
 

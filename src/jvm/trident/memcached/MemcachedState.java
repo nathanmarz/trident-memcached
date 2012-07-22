@@ -44,29 +44,27 @@ public class MemcachedState<T> implements IBackingMap<T> {
         Serializer<T> serializer = null;
     }  
     
-    public StateFactory opaque(List<InetSocketAddress> servers) {
+    public static StateFactory opaque(List<InetSocketAddress> servers) {
         return opaque(servers, new Options());
     }
 
-    public StateFactory opaque(List<InetSocketAddress> servers, Options<OpaqueValue> opts) {
+    public static StateFactory opaque(List<InetSocketAddress> servers, Options<OpaqueValue> opts) {
         return new Factory(servers, StateType.OPAQUE, opts);
     }
     
-    public StateFactory transactional(List<InetSocketAddress> servers) {
+    public static StateFactory transactional(List<InetSocketAddress> servers) {
         return transactional(servers, new Options());
-        
     }
     
-    public StateFactory transactional(List<InetSocketAddress> servers, Options<TransactionalValue> opts) {
+    public static StateFactory transactional(List<InetSocketAddress> servers, Options<TransactionalValue> opts) {
         return new Factory(servers, StateType.TRANSACTIONAL, opts);
     } 
     
-    public StateFactory nonTransactional(List<InetSocketAddress> servers) {
-        return nonTransactional(servers, new Options());
-        
+    public static StateFactory nonTransactional(List<InetSocketAddress> servers) {
+        return nonTransactional(servers, new Options());        
     }
     
-    public StateFactory nonTransactional(List<InetSocketAddress> servers, Options<Object> opts) {
+    public static StateFactory nonTransactional(List<InetSocketAddress> servers, Options<Object> opts) {
         return new Factory(servers, StateType.NON_TRANSACTIONAL, opts);       
     }      
     
@@ -158,7 +156,7 @@ public class MemcachedState<T> implements IBackingMap<T> {
     }
 
     @Override
-    public void multiPut(List<List<Object>> keys, List<T> vals) {
+    public void multiPut(List<List<Object>> keys, List<T> vals) {        
         List<OperationFuture<Boolean>> futures = new ArrayList(keys.size());
         for(int i=0; i<keys.size(); i++) {
             String key = toSingleKey(keys.get(i));
@@ -181,6 +179,5 @@ public class MemcachedState<T> implements IBackingMap<T> {
             throw new RuntimeException("Memcached state does not support compound keys");
         }
         return (String) key.get(0);
-    }
-    
+    }    
 }
