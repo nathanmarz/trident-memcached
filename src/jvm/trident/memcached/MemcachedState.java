@@ -2,8 +2,10 @@ package trident.memcached;
 
 import backtype.storm.tuple.Values;
 import java.io.IOException;
+import java.io.Serializable;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -12,12 +14,16 @@ import net.spy.memcached.ConnectionFactoryBuilder;
 import net.spy.memcached.MemcachedClient;
 import net.spy.memcached.internal.OperationFuture;
 import net.spy.memcached.transcoders.Transcoder;
+import storm.trident.state.JSONNonTransactionalSerializer;
+import storm.trident.state.JSONOpaqueSerializer;
+import storm.trident.state.JSONTransactionalSerializer;
 import storm.trident.state.OpaqueValue;
 import storm.trident.state.Serializer;
 import storm.trident.state.State;
 import storm.trident.state.map.IBackingMap;
 import storm.trident.state.StateFactory;
 import storm.trident.state.StateType;
+import storm.trident.state.TransactionalValue;
 import storm.trident.state.map.CachedMap;
 import storm.trident.state.map.MapState;
 import storm.trident.state.map.NonTransactionalMap;
@@ -26,35 +32,42 @@ import storm.trident.state.map.SnapshottableMap;
 import storm.trident.state.map.TransactionalMap;
 
 public class MemcachedState<T> implements IBackingMap<T> {
-    public static class Options {
+    private static final Map<StateType, Serializer> DEFAULT_SERIALZERS = new HashMap<StateType, Serializer>() {{
+        put(StateType.NON_TRANSACTIONAL, new JSONNonTransactionalSerializer());
+        put(StateType.TRANSACTIONAL, new JSONTransactionalSerializer());
+        put(StateType.OPAQUE, new JSONOpaqueSerializer());
+    }};
+    
+    public static class Options<T> implements Serializable {
         int localCacheSize = 1000;
         String globalKey = "$GLOBAL$";
-    }
+        Serializer<T> serializer = null;
+    }  
     
-    public StateFactory opaque(List<InetSocketAddress> servers, Serializer<OpaqueValue> serializer) {
-        return opaque(servers, serializer, new Options());
+    public StateFactory opaque(List<InetSocketAddress> servers) {
+        return opaque(servers, new Options());
     }
 
-    public StateFactory opaque(List<InetSocketAddress> servers, Serializer<OpaqueValue> serializer, Options opts) {
-        return new Factory(servers, StateType.OPAQUE, serializer, opts);
+    public StateFactory opaque(List<InetSocketAddress> servers, Options<OpaqueValue> opts) {
+        return new Factory(servers, StateType.OPAQUE, opts);
     }
     
-    public StateFactory transactional(List<InetSocketAddress> servers, Serializer<OpaqueValue> serializer) {
-        return transactional(servers, serializer, new Options());
+    public StateFactory transactional(List<InetSocketAddress> servers) {
+        return transactional(servers, new Options());
         
     }
     
-    public StateFactory transactional(List<InetSocketAddress> servers, Serializer<OpaqueValue> serializer, Options opts) {
-        return new Factory(servers, StateType.TRANSACTIONAL, serializer, opts);
+    public StateFactory transactional(List<InetSocketAddress> servers, Options<TransactionalValue> opts) {
+        return new Factory(servers, StateType.TRANSACTIONAL, opts);
     } 
     
-    public StateFactory nonTransactional(List<InetSocketAddress> servers, Serializer<OpaqueValue> serializer) {
-        return nonTransactional(servers, serializer, new Options());
+    public StateFactory nonTransactional(List<InetSocketAddress> servers) {
+        return nonTransactional(servers, new Options());
         
     }
     
-    public StateFactory nonTransactional(List<InetSocketAddress> servers, Serializer<OpaqueValue> serializer, Options opts) {
-        return new Factory(servers, StateType.NON_TRANSACTIONAL, serializer, opts);       
+    public StateFactory nonTransactional(List<InetSocketAddress> servers, Options<Object> opts) {
+        return new Factory(servers, StateType.NON_TRANSACTIONAL, opts);       
     }      
     
     protected static class Factory implements StateFactory {
@@ -63,10 +76,18 @@ public class MemcachedState<T> implements IBackingMap<T> {
         Serializer _ser;
         Options _opts;
         
-        public Factory(List<InetSocketAddress> servers, StateType type, Serializer ser, Options options) {
+        public Factory(List<InetSocketAddress> servers, StateType type, Options options) {
             _type = type;
             _servers = servers;
             _opts = options;
+            if(options.serializer==null) {
+                _ser = DEFAULT_SERIALZERS.get(type);
+                if(_ser==null) {
+                    throw new RuntimeException("Couldn't find serializer for state type: " + type);
+                }
+            } else {
+                _ser = options.serializer;
+            }
         }
         
         @Override
