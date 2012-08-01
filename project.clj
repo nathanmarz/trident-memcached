@@ -7,8 +7,7 @@
                  [com.thimbleware.jmemcached/jmemcached-cli "1.0.0"]
                  ]
 
-  :dev-dependencies [[storm "0.8.0-SNAPSHOT"]
-                     [storm/trident "0.0.2-SNAPSHOT"]
+  :dev-dependencies [[storm "0.8.0"]
                      [org.clojure/clojure "1.4.0"]
                      ])
 
