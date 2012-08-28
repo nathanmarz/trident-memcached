@@ -1,4 +1,4 @@
-(defproject storm/trident-memcached "0.0.1-SNAPSHOT"
+(defproject storm/trident-memcached "0.0.2-wip2"
   :source-path "src/clj"
   :java-source-path "src/jvm"
   :javac-options {:debug "true" :fork "true"}
@@ -7,7 +7,7 @@
                  [com.thimbleware.jmemcached/jmemcached-cli "1.0.0"]
                  ]
 
-  :dev-dependencies [[storm "0.8.0"]
+  :dev-dependencies [[storm "0.8.1-wip6"]
                      [org.clojure/clojure "1.4.0"]
                      ])
 

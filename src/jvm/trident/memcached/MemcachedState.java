@@ -42,6 +42,7 @@ public class MemcachedState<T> implements IBackingMap<T> {
         int localCacheSize = 1000;
         String globalKey = "$GLOBAL$";
         Serializer<T> serializer = null;
+        int expiration = 0;
     }  
     
     public static StateFactory opaque(List<InetSocketAddress> servers) {
@@ -116,7 +117,7 @@ public class MemcachedState<T> implements IBackingMap<T> {
             });
             MemcachedState s;
             try {
-                s = new MemcachedState(new MemcachedClient(builder.build(), _servers));
+                s = new MemcachedState(new MemcachedClient(builder.build(), _servers), _opts);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -136,9 +137,11 @@ public class MemcachedState<T> implements IBackingMap<T> {
     }
     
     MemcachedClient _client;
+    Options _opts;
     
-    public MemcachedState(MemcachedClient client) {
+    public MemcachedState(MemcachedClient client, Options opts) {
         _client = client;
+        _opts = opts;
     }
 
     @Override
@@ -161,7 +164,7 @@ public class MemcachedState<T> implements IBackingMap<T> {
         for(int i=0; i<keys.size(); i++) {
             String key = toSingleKey(keys.get(i));
             T val = vals.get(i);
-            futures.add(_client.set(key, 0, val));
+            futures.add(_client.set(key, _opts.expiration, val));
         }
         for(OperationFuture<Boolean> future: futures) {
             try {
