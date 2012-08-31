@@ -103,7 +103,7 @@ public class MemcachedState<T> implements IBackingMap<T> {
         public State makeState(Map conf, int partitionIndex, int numPartitions) {
             MemcachedState s;
             try {
-                s = new MemcachedState(makeMemcachedClient(_servers), _opts.serializer);
+                s = new MemcachedState(makeMemcachedClient(_servers), _ser);
             } catch (UnknownHostException e) {
                 throw new RuntimeException(e);
             }
