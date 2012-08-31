@@ -11,6 +11,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import com.google.common.base.Preconditions;
+
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
 
@@ -174,7 +176,7 @@ public class MemcachedState<T> implements IBackingMap<T> {
 
     public MemcachedState(Client client, Serializer<T> serializer) {
         _client = client;
-        _serializer = serializer;
+        _serializer = Preconditions.checkNotNull(serializer);
     }
 
     @Override
