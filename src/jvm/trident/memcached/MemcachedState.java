@@ -190,10 +190,10 @@ public class MemcachedState<T> implements IBackingMap<T> {
                   tuples.append(",");
               }
               String hostname = endpoint.getHostName();
-              if (endpoint.getHostName().equals("localhost")) {
-                  InetAddress localMachine = InetAddress.getLocalHost();
-                  hostname = localMachine.getHostName();
-              }
+//              if (endpoint.getHostName().equals("localhost")) {
+//                  InetAddress localMachine = InetAddress.getLocalHost();
+//                  hostname = localMachine.getHostName();
+//              }
               tuples.append(String.format("%s:%d:%d", hostname, endpoint.getPort(), defaultWeight));
           }
           return tuples.toString();
@@ -218,8 +218,12 @@ public class MemcachedState<T> implements IBackingMap<T> {
         List<T> ret = new ArrayList(singleKeys.size());
         for(String k: singleKeys) {
             ChannelBuffer entry = result.get(k);
-            T val = (T)_serializer.deserialize(entry.array());
-            ret.add(val);
+            if (entry != null) {
+              T val = (T)_serializer.deserialize(entry.array());
+              ret.add(val);
+            } else {
+              ret.add(null);
+            }
         }
         return ret;
     }
