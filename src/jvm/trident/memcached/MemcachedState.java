@@ -11,10 +11,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import net.spy.memcached.CachedData;
-import net.spy.memcached.ConnectionFactoryBuilder;
-import net.spy.memcached.transcoders.Transcoder;
-
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
 
@@ -103,30 +99,6 @@ public class MemcachedState<T> implements IBackingMap<T> {
 
         @Override
         public State makeState(Map conf, int partitionIndex, int numPartitions) {
-            ConnectionFactoryBuilder builder =
-                    new ConnectionFactoryBuilder()
-                        .setTranscoder(new Transcoder<Object>() {
-
-                @Override
-                public boolean asyncDecode(CachedData cd) {
-                    return false;
-                }
-
-                @Override
-                public CachedData encode(Object t) {
-                    return new CachedData(0, _ser.serialize(t), CachedData.MAX_SIZE);
-                }
-
-                @Override
-                public Object decode(CachedData data) {
-                    return _ser.deserialize(data.getData());
-                }
-
-                @Override
-                public int getMaxSize() {
-                    return CachedData.MAX_SIZE;
-                }
-            });
             MemcachedState s;
             try {
                 s = new MemcachedState(makeMemcachedClient(_servers), _opts.serializer);
@@ -158,6 +130,7 @@ public class MemcachedState<T> implements IBackingMap<T> {
         final int requestRetries = 2;         // max number of retries after the first failure.
         final int connectTimeoutMillis = 200; // tcp connection timeout.
         final int requestTimeoutMillis = 50;  // request timeout.
+        final int e2eTimeoutMillis = 500;     // end-to-end request timeout.
         final int hostConnectionLimit = 10;   // concurrent connections to one server.
         final int maxWaiters = 2;             // max waiters in the request queue.
 
@@ -168,6 +141,7 @@ public class MemcachedState<T> implements IBackingMap<T> {
                                    .codec(new Memcached())
                                    .tcpConnectTimeout(new Duration(TimeUnit.MILLISECONDS.toNanos(connectTimeoutMillis)))
                                    .requestTimeout(new Duration(TimeUnit.MILLISECONDS.toNanos(requestTimeoutMillis)))
+                                   .timeout(new Duration(TimeUnit.MILLISECONDS.toNanos(e2eTimeoutMillis)))
                                    .hostConnectionLimit(hostConnectionLimit)
                                    .hostConnectionMaxWaiters(maxWaiters)
                                    .retries(requestRetries))
@@ -189,12 +163,7 @@ public class MemcachedState<T> implements IBackingMap<T> {
               if (tuples.length() > 0) {
                   tuples.append(",");
               }
-              String hostname = endpoint.getHostName();
-//              if (endpoint.getHostName().equals("localhost")) {
-//                  InetAddress localMachine = InetAddress.getLocalHost();
-//                  hostname = localMachine.getHostName();
-//              }
-              tuples.append(String.format("%s:%d:%d", hostname, endpoint.getPort(), defaultWeight));
+              tuples.append(String.format("%s:%d:%d", endpoint.getHostName(), endpoint.getPort(), defaultWeight));
           }
           return tuples.toString();
       }
@@ -230,7 +199,7 @@ public class MemcachedState<T> implements IBackingMap<T> {
 
     @Override
     public void multiPut(List<List<Object>> keys, List<T> vals) {
-      final long defaultExpirtyMillis = 30 * 24 * 60 * 60 * 1000; // 30 days.
+      final long defaultExpirtyMillis = 7 * 24 * 60 * 60 * 1000; // 7 days.
       List<Future> futures = new ArrayList(keys.size());
         for(int i=0; i<keys.size(); i++) {
             String key = toSingleKey(keys.get(i));
