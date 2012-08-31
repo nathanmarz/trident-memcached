@@ -175,7 +175,7 @@ public class MemcachedState<T> implements IBackingMap<T> {
     private final Serializer<T> _serializer;
 
     public MemcachedState(Client client, Serializer<T> serializer) {
-        _client = client;
+        _client = Preconditions.checkNotNull(client);
         _serializer = Preconditions.checkNotNull(serializer);
     }
 

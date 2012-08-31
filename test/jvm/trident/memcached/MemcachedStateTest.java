@@ -38,15 +38,15 @@ public class MemcachedStateTest extends TestCase {
     // Build the cache client.
     Client client = MemcachedState.Factory.makeMemcachedClient(Arrays.asList(new InetSocketAddress("localhost", PORT)));
     MemcachedState<Integer> state = new MemcachedState<Integer>(client, new Serializer<Integer>() {
-      @Override
-      public byte[] serialize(Integer integer) {
-        return Ints.toByteArray(integer);
-      }
+        @Override
+        public byte[] serialize(Integer integer) {
+            return Ints.toByteArray(integer);
+        }
 
-      @Override
-      public Object deserialize(byte[] bytes) {
-        return Ints.fromByteArray(bytes);
-      }
+        @Override
+        public Object deserialize(byte[] bytes) {
+            return Ints.fromByteArray(bytes);
+        }
     });
 
     // Insert some kv pairs.
@@ -54,18 +54,18 @@ public class MemcachedStateTest extends TestCase {
     List<Integer> vals = Lists.newArrayList();
     List<List<Object>> keyList = Lists.newArrayList();
     for (String key : keys) {
-      List<Object> l = Lists.newArrayList();
-      l.add(key);
-      keyList.add(l);
-      vals.add(RANDOM.nextInt());
+        List<Object> l = Lists.newArrayList();
+        l.add(key);
+        keyList.add(l);
+        vals.add(RANDOM.nextInt());
     }
     state.multiPut(keyList, vals);
 
-    // Verify if the retrieval of the kv pairs.
+    // Verify the retrieval of the kv pairs.
     List<Integer> actualVals = state.multiGet(keyList);
     assertEquals(vals.size(), actualVals.size());
     for (int i = 0; i < vals.size(); i++) {
-      assertEquals(vals.get(i), actualVals.get(i));
+        assertEquals(vals.get(i), actualVals.get(i));
     }
   }
 }
