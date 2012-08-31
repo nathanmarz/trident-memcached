@@ -2,7 +2,6 @@ package trident.memcached;
 
 import backtype.storm.tuple.Values;
 import java.io.Serializable;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
