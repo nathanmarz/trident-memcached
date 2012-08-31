@@ -200,7 +200,7 @@ public class MemcachedState<T> implements IBackingMap<T> {
 
     @Override
     public void multiPut(List<List<Object>> keys, List<T> vals) {
-      final long defaultExpirtyMillis = 7 * 24 * 60 * 60 * 1000; // 7 days.
+      final long defaultExpiryMillis = 7 * 24 * 60 * 60 * 1000; // 7 days.
       List<Future> futures = new ArrayList(keys.size());
         for(int i=0; i<keys.size(); i++) {
             String key = toSingleKey(keys.get(i));
@@ -208,7 +208,7 @@ public class MemcachedState<T> implements IBackingMap<T> {
             byte[] serialized = _serializer.serialize(val);
             final ChannelBuffer entry = ChannelBuffers.wrappedBuffer(serialized);
             Time expiry =
-                  Time.fromMilliseconds(Time.now().inMilliseconds() + defaultExpirtyMillis);
+                  Time.fromMilliseconds(Time.now().inMilliseconds() + defaultExpiryMillis);
             futures.add(_client.set(key, 0 /* no flags */, expiry, entry));
         }
 
