@@ -2,6 +2,7 @@
   :source-path "src/clj"
   :java-source-path "src/jvm"
   :javac-options {:debug "true" :fork "true"}
+  :repositories {"spy" "http://files.couchbase.com/maven2"}  
 
   :dependencies [[spy/spymemcached "2.8.1"]
                  [com.thimbleware.jmemcached/jmemcached-cli "1.0.0"]
