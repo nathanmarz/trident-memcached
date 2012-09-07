@@ -20,4 +20,8 @@ NANNY
 _release
 *.zip
 .lein-deps-sum
+*.ipr
+*.iml
+*.iws
+target
 
