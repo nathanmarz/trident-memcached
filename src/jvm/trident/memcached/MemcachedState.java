@@ -209,7 +209,7 @@ public class MemcachedState<T> implements IBackingMap<T> {
             byte[] serialized = _ser.serialize(val);
             final ChannelBuffer entry = ChannelBuffers.wrappedBuffer(serialized);
             Time expiry =
-                  Time.fromMilliseconds(Time.now().inMilliseconds() + _opts.expiration);
+                  Time.fromMilliseconds(_opts.expiration);
             futures.add(_client.set(key, 0 /* no flags */, expiry, entry));
         }
 
