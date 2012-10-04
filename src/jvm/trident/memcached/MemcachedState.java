@@ -51,6 +51,12 @@ public class MemcachedState<T> implements IBackingMap<T> {
         public String globalKey = "$GLOBAL$";
         public Serializer<T> serializer = null;
         public long expiration = 0;
+        public int requestRetries = 2;         // max number of retries after the first failure.
+        public int connectTimeoutMillis = 200; // tcp connection timeout.
+        public int requestTimeoutMillis = 50;  // request timeout.
+        public int e2eTimeoutMillis = 500;     // end-to-end request timeout.
+        public int hostConnectionLimit = 10;   // concurrent connections to one server.
+        public int maxWaiters = 2;             // max waiters in the request queue.
     }  
 
     public static StateFactory opaque(List<InetSocketAddress> servers) {
@@ -101,7 +107,7 @@ public class MemcachedState<T> implements IBackingMap<T> {
         public State makeState(Map conf, int partitionIndex, int numPartitions) {
             MemcachedState s;
             try {
-                s = new MemcachedState(makeMemcachedClient(_servers), _opts, _ser);
+                s = new MemcachedState(makeMemcachedClient(_opts, _servers), _opts, _ser);
             } catch (UnknownHostException e) {
                 throw new RuntimeException(e);
             }
@@ -125,26 +131,19 @@ public class MemcachedState<T> implements IBackingMap<T> {
        * @param endpoints list of {@code InetSocketAddress} for all the memcached servers.
        * @return {@link Client} to read/write to the hash ring of the servers..
        */
-      static Client makeMemcachedClient(List<InetSocketAddress> endpoints)
+      static Client makeMemcachedClient(Options opts, List<InetSocketAddress> endpoints)
           throws UnknownHostException {
-        final int requestRetries = 2;         // max number of retries after the first failure.
-        final int connectTimeoutMillis = 200; // tcp connection timeout.
-        final int requestTimeoutMillis = 50;  // request timeout.
-        final int e2eTimeoutMillis = 500;     // end-to-end request timeout.
-        final int hostConnectionLimit = 10;   // concurrent connections to one server.
-        final int maxWaiters = 2;             // max waiters in the request queue.
-
         com.twitter.finagle.memcached.Client client =
             KetamaClientBuilder.get()
                 .nodes(getHostPortWeightTuples(endpoints))
                 .clientBuilder(ClientBuilder.get()
                                    .codec(new Memcached())
-                                   .tcpConnectTimeout(new Duration(TimeUnit.MILLISECONDS.toNanos(connectTimeoutMillis)))
-                                   .requestTimeout(new Duration(TimeUnit.MILLISECONDS.toNanos(requestTimeoutMillis)))
-                                   .timeout(new Duration(TimeUnit.MILLISECONDS.toNanos(e2eTimeoutMillis)))
-                                   .hostConnectionLimit(hostConnectionLimit)
-                                   .hostConnectionMaxWaiters(maxWaiters)
-                                   .retries(requestRetries))
+                                   .tcpConnectTimeout(new Duration(TimeUnit.MILLISECONDS.toNanos(opts.connectTimeoutMillis)))
+                                   .requestTimeout(new Duration(TimeUnit.MILLISECONDS.toNanos(opts.requestTimeoutMillis)))
+                                   .timeout(new Duration(TimeUnit.MILLISECONDS.toNanos(opts.e2eTimeoutMillis)))
+                                   .hostConnectionLimit(opts.hostConnectionLimit)
+                                   .hostConnectionMaxWaiters(opts.maxWaiters)
+                                   .retries(opts.requestRetries))
                 .build();
 
         return new ClientBase(client);
