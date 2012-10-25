@@ -1,4 +1,4 @@
-(defproject storm/trident-memcached "0.0.3-wip4"
+(defproject storm/trident-memcached "0.0.4-wip1"
   :source-path "src/clj"
   :java-source-path "src/jvm"
   :javac-options {:debug "true" :fork "true"}
