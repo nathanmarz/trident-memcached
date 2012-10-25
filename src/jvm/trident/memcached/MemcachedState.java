@@ -1,6 +1,14 @@
 package trident.memcached;
 
+import backtype.storm.topology.ReportedFailedException;
 import backtype.storm.tuple.Values;
+import com.twitter.finagle.ApiException;
+import com.twitter.finagle.ApplicationException;
+import com.twitter.finagle.ChannelBufferUsageException;
+import com.twitter.finagle.ChannelException;
+import com.twitter.finagle.CodecException;
+import com.twitter.finagle.RequestException;
+import com.twitter.finagle.ServiceException;
 import java.io.Serializable;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
@@ -181,40 +189,64 @@ public class MemcachedState<T> implements IBackingMap<T> {
 
     @Override
     public List<T> multiGet(List<List<Object>> keys) {
-        List<String> singleKeys = new ArrayList();
-        for(List<Object> key: keys) {
-            singleKeys.add(toSingleKey(key));
-        }
-        Map<String, ChannelBuffer> result = _client.get(singleKeys).get();
-        List<T> ret = new ArrayList(singleKeys.size());
-        for(String k: singleKeys) {
-            ChannelBuffer entry = result.get(k);
-            if (entry != null) {
-              T val = (T)_ser.deserialize(entry.array());
-              ret.add(val);
-            } else {
-              ret.add(null);
+        try {
+            List<String> singleKeys = new ArrayList();
+            for(List<Object> key: keys) {
+                singleKeys.add(toSingleKey(key));
             }
+            Map<String, ChannelBuffer> result = _client.get(singleKeys).get();
+            List<T> ret = new ArrayList(singleKeys.size());
+            for(String k: singleKeys) {
+                ChannelBuffer entry = result.get(k);
+                if (entry != null) {
+                  T val = (T)_ser.deserialize(entry.array());
+                  ret.add(val);
+                } else {
+                  ret.add(null);
+                }
+            }
+            return ret;
+        } catch(Exception e) {
+            checkMemcachedException(e);
+            throw new IllegalStateException("Impossible to reach this code");
         }
-        return ret;
     }
 
     @Override
     public void multiPut(List<List<Object>> keys, List<T> vals) {
-      List<Future> futures = new ArrayList(keys.size());
-        for(int i=0; i<keys.size(); i++) {
-            String key = toSingleKey(keys.get(i));
-            T val = vals.get(i);
-            byte[] serialized = _ser.serialize(val);
-            final ChannelBuffer entry = ChannelBuffers.wrappedBuffer(serialized);
-            Time expiry =
-                  Time.fromMilliseconds(_opts.expiration);
-            futures.add(_client.set(key, 0 /* no flags */, expiry, entry));
-        }
+        try {
+            List<Future> futures = new ArrayList(keys.size());
+            for(int i=0; i<keys.size(); i++) {
+                String key = toSingleKey(keys.get(i));
+                T val = vals.get(i);
+                byte[] serialized = _ser.serialize(val);
+                final ChannelBuffer entry = ChannelBuffers.wrappedBuffer(serialized);
+                Time expiry =
+                      Time.fromMilliseconds(_opts.expiration);
+                futures.add(_client.set(key, 0 /* no flags */, expiry, entry));
+            }
 
-      for(Future future: futures) {
-          future.get();
-      }
+            for(Future future: futures) {
+                future.get();
+            }
+        } catch(Exception e) {
+            checkMemcachedException(e);
+        }
+    }
+    
+    
+    private void checkMemcachedException(Exception e) {
+        if(e instanceof RequestException ||
+           e instanceof ChannelException ||
+           e instanceof ServiceException ||
+           e instanceof ApplicationException ||
+           e instanceof ApiException ||
+           e instanceof CodecException ||
+           e instanceof ChannelBufferUsageException) {
+            throw new ReportedFailedException(e);
+        } else {
+            throw new RuntimeException(e);
+        }        
     }
 
     private String toSingleKey(List<Object> key) {

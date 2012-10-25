@@ -11,7 +11,7 @@
                  [com.twitter/finagle-memcached "5.3.8" :exclusions [com.google.guava/guava]]
                  ]
 
-  :dev-dependencies [[storm "0.8.1"]
+  :dev-dependencies [[storm "0.8.2-wip15"]
                      [org.clojure/clojure "1.4.0"]
                      [com.thimbleware.jmemcached/jmemcached-cli "1.0.0"]
                      ])
