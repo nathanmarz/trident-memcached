@@ -1,5 +1,6 @@
 package trident.memcached;
 
+import backtype.storm.task.IMetricsContext;
 import backtype.storm.topology.ReportedFailedException;
 import backtype.storm.tuple.Values;
 import com.twitter.finagle.ApiException;
@@ -112,7 +113,7 @@ public class MemcachedState<T> implements IBackingMap<T> {
         }
 
         @Override
-        public State makeState(Map conf, int partitionIndex, int numPartitions) {
+        public State makeState(Map conf, IMetricsContext context, int partitionIndex, int numPartitions) {
             MemcachedState s;
             try {
                 s = new MemcachedState(makeMemcachedClient(_opts, _servers), _opts, _ser);
