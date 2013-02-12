@@ -14,6 +14,7 @@ import java.io.Serializable;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -66,6 +67,7 @@ public class MemcachedState<T> implements IBackingMap<T> {
         public int e2eTimeoutMillis = 500;     // end-to-end request timeout.
         public int hostConnectionLimit = 10;   // concurrent connections to one server.
         public int maxWaiters = 2;             // max waiters in the request queue.
+        public int maxMultiGetBatchSize = 100;
     }  
 
     public static StateFactory opaque(List<InetSocketAddress> servers) {
@@ -191,19 +193,25 @@ public class MemcachedState<T> implements IBackingMap<T> {
     @Override
     public List<T> multiGet(List<List<Object>> keys) {
         try {
-            List<String> singleKeys = new ArrayList();
+            LinkedList<String> singleKeys = new LinkedList();
             for(List<Object> key: keys) {
                 singleKeys.add(toSingleKey(key));
             }
-            Map<String, ChannelBuffer> result = _client.get(singleKeys).get();
             List<T> ret = new ArrayList(singleKeys.size());
-            for(String k: singleKeys) {
-                ChannelBuffer entry = result.get(k);
-                if (entry != null) {
-                  T val = (T)_ser.deserialize(entry.array());
-                  ret.add(val);
-                } else {
-                  ret.add(null);
+            while(!singleKeys.isEmpty()) {
+                List<String> getBatch = new ArrayList<String>(_opts.maxMultiGetBatchSize);
+                for(int i=0; i<_opts.maxMultiGetBatchSize && !singleKeys.isEmpty(); i++) {
+                    getBatch.add(singleKeys.removeFirst());
+                }
+                Map<String, ChannelBuffer> result = _client.get(getBatch).get();
+                for(String k: getBatch) {
+                    ChannelBuffer entry = result.get(k);
+                    if (entry != null) {
+                      T val = (T)_ser.deserialize(entry.array());
+                      ret.add(val);
+                    } else {
+                      ret.add(null);
+                    }
                 }
             }
             return ret;
