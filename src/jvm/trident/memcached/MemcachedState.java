@@ -254,6 +254,6 @@ public class MemcachedState<T> implements IBackingMap<T> {
         if(key.size()!=1) {
             throw new RuntimeException("Memcached state does not support compound keys");
         }
-      return (String) key.get(0);
+        return key.get(0).toString();
     }
 }
