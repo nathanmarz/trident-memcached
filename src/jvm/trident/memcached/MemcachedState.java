@@ -3,6 +3,8 @@ package trident.memcached;
 import backtype.storm.task.IMetricsContext;
 import backtype.storm.topology.ReportedFailedException;
 import backtype.storm.tuple.Values;
+import backtype.storm.Config;
+import backtype.storm.metric.api.CountMetric;
 import com.twitter.finagle.ApiException;
 import com.twitter.finagle.ApplicationException;
 import com.twitter.finagle.ChannelBufferUsageException;
@@ -116,6 +118,17 @@ public class MemcachedState<T> implements IBackingMap<T> {
 
         @Override
         public State makeState(Map conf, IMetricsContext context, int partitionIndex, int numPartitions) {
+	    int bucketSize = (int)(conf.get(Config.TOPOLOGY_BUILTIN_METRICS_BUCKET_SIZE_SECS));
+	    _mreads = 
+		context.registerMetric("memcached/reads", new CountMetric(), 
+				       bucketSize);
+	    _mwrites = 
+		context.registerMetric("memcached/writes", new CountMetric(), 
+				       bucketSize);
+	    _mexceptions = 
+		context.registerMetric("memcached/exceptions", 
+				       new CountMetric(), bucketSize);
+
             MemcachedState s;
             try {
                 s = new MemcachedState(makeMemcachedClient(_opts, _servers), _opts, _ser);
@@ -182,6 +195,9 @@ public class MemcachedState<T> implements IBackingMap<T> {
     private final Client _client;
     private Options _opts;
     private Serializer _ser;
+    static CountMetric _mreads;
+    static CountMetric _mwrites;
+    static CountMetric _mexceptions;
     
     public MemcachedState(Client client, Options opts, Serializer<T> ser) {
         _client = client;
@@ -214,6 +230,7 @@ public class MemcachedState<T> implements IBackingMap<T> {
                     }
                 }
             }
+	    _mreads.incrBy(ret.size());
             return ret;
         } catch(Exception e) {
             checkMemcachedException(e);
@@ -235,6 +252,7 @@ public class MemcachedState<T> implements IBackingMap<T> {
                 futures.add(_client.set(key, 0 /* no flags */, expiry, entry));
             }
 
+	    _mwrites.incrBy(futures.size());
             for(Future future: futures) {
                 future.get();
             }
@@ -245,6 +263,7 @@ public class MemcachedState<T> implements IBackingMap<T> {
     
     
     private void checkMemcachedException(Exception e) {
+	_mexceptions.incr();
         if(e instanceof RequestException ||
            e instanceof ChannelException ||
            e instanceof ServiceException ||
