@@ -118,23 +118,13 @@ public class MemcachedState<T> implements IBackingMap<T> {
 
         @Override
         public State makeState(Map conf, IMetricsContext context, int partitionIndex, int numPartitions) {
-	    int bucketSize = (int)(conf.get(Config.TOPOLOGY_BUILTIN_METRICS_BUCKET_SIZE_SECS));
-	    _mreads = 
-		context.registerMetric("memcached/reads", new CountMetric(), 
-				       bucketSize);
-	    _mwrites = 
-		context.registerMetric("memcached/writes", new CountMetric(), 
-				       bucketSize);
-	    _mexceptions = 
-		context.registerMetric("memcached/exceptions", 
-				       new CountMetric(), bucketSize);
-
             MemcachedState s;
             try {
                 s = new MemcachedState(makeMemcachedClient(_opts, _servers), _opts, _ser);
             } catch (UnknownHostException e) {
                 throw new RuntimeException(e);
             }
+            s.registerMetrics(conf, context);
             CachedMap c = new CachedMap(s, _opts.localCacheSize);
             MapState ms;
             if(_type == StateType.NON_TRANSACTIONAL) {
@@ -195,9 +185,9 @@ public class MemcachedState<T> implements IBackingMap<T> {
     private final Client _client;
     private Options _opts;
     private Serializer _ser;
-    static CountMetric _mreads;
-    static CountMetric _mwrites;
-    static CountMetric _mexceptions;
+    CountMetric _mreads;
+    CountMetric _mwrites;
+    CountMetric _mexceptions;
     
     public MemcachedState(Client client, Options opts, Serializer<T> ser) {
         _client = client;
@@ -252,10 +242,10 @@ public class MemcachedState<T> implements IBackingMap<T> {
                 futures.add(_client.set(key, 0 /* no flags */, expiry, entry));
             }
 
-	    _mwrites.incrBy(futures.size());
             for(Future future: futures) {
                 future.get();
             }
+	    _mwrites.incrBy(futures.size());
         } catch(Exception e) {
             checkMemcachedException(e);
         }
@@ -275,6 +265,13 @@ public class MemcachedState<T> implements IBackingMap<T> {
         } else {
             throw new RuntimeException(e);
         }        
+    }
+
+    private void registerMetrics(Map conf, IMetricsContext context) {
+      int bucketSize = (int)(conf.get(Config.TOPOLOGY_BUILTIN_METRICS_BUCKET_SIZE_SECS));
+      _mreads = context.registerMetric("memcached/readCount", new CountMetric(), bucketSize);
+      _mwrites = context.registerMetric("memcached/writeCount", new CountMetric(), bucketSize);
+      _mexceptions = context.registerMetric("memcached/exceptionCount", new CountMetric(), bucketSize);
     }
 
     private String toSingleKey(List<Object> key) {
