@@ -8,12 +8,12 @@
                  [com.twitter/util-logging "5.3.7" :exclusions [com.google.guava/guava]]
                  [com.twitter/finagle-core "5.3.8" :exclusions [com.google.guava/guava]]
                  [com.twitter/finagle-memcached "5.3.8" :exclusions [com.google.guava/guava]]
+                 [com.thimbleware.jmemcached/jmemcached-cli "1.0.0"]
                  ]
 
   :profiles {
       :provided {
       :dependencies [[storm "0.9.0-wip15"]
                      [org.clojure/clojure "1.4.0"]
-                     [com.thimbleware.jmemcached/jmemcached-cli "1.0.0"]
                      ]}}
   )
