@@ -3,6 +3,8 @@ package trident.memcached;
 import backtype.storm.task.IMetricsContext;
 import backtype.storm.topology.ReportedFailedException;
 import backtype.storm.tuple.Values;
+import backtype.storm.Config;
+import backtype.storm.metric.api.CountMetric;
 import com.twitter.finagle.ApiException;
 import com.twitter.finagle.ApplicationException;
 import com.twitter.finagle.ChannelBufferUsageException;
@@ -122,6 +124,7 @@ public class MemcachedState<T> implements IBackingMap<T> {
             } catch (UnknownHostException e) {
                 throw new RuntimeException(e);
             }
+            s.registerMetrics(conf, context);
             CachedMap c = new CachedMap(s, _opts.localCacheSize);
             MapState ms;
             if(_type == StateType.NON_TRANSACTIONAL) {
@@ -182,6 +185,9 @@ public class MemcachedState<T> implements IBackingMap<T> {
     private final Client _client;
     private Options _opts;
     private Serializer _ser;
+    CountMetric _mreads;
+    CountMetric _mwrites;
+    CountMetric _mexceptions;
     
     public MemcachedState(Client client, Options opts, Serializer<T> ser) {
         _client = client;
@@ -214,6 +220,7 @@ public class MemcachedState<T> implements IBackingMap<T> {
                     }
                 }
             }
+	    _mreads.incrBy(ret.size());
             return ret;
         } catch(Exception e) {
             checkMemcachedException(e);
@@ -238,6 +245,7 @@ public class MemcachedState<T> implements IBackingMap<T> {
             for(Future future: futures) {
                 future.get();
             }
+	    _mwrites.incrBy(futures.size());
         } catch(Exception e) {
             checkMemcachedException(e);
         }
@@ -245,6 +253,7 @@ public class MemcachedState<T> implements IBackingMap<T> {
     
     
     private void checkMemcachedException(Exception e) {
+	_mexceptions.incr();
         if(e instanceof RequestException ||
            e instanceof ChannelException ||
            e instanceof ServiceException ||
@@ -256,6 +265,13 @@ public class MemcachedState<T> implements IBackingMap<T> {
         } else {
             throw new RuntimeException(e);
         }        
+    }
+
+    private void registerMetrics(Map conf, IMetricsContext context) {
+      int bucketSize = (int)(conf.get(Config.TOPOLOGY_BUILTIN_METRICS_BUCKET_SIZE_SECS));
+      _mreads = context.registerMetric("memcached/readCount", new CountMetric(), bucketSize);
+      _mwrites = context.registerMetric("memcached/writeCount", new CountMetric(), bucketSize);
+      _mexceptions = context.registerMetric("memcached/exceptionCount", new CountMetric(), bucketSize);
     }
 
     private String toSingleKey(List<Object> key) {
